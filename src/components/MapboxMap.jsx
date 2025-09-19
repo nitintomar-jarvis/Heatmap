@@ -2,12 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { locationsData } from '../data/locations';
+import { createClusters, getClusterSize, getClusterColor } from '../utils/clusterUtils';
+import ClusterModal from './ClusterModal';
 
 const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKey, showHeatmap = true }) => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [, setClusters] = useState([]);
+  const [selectedCluster, setSelectedCluster] = useState(null);
+  const [showClusterModal, setShowClusterModal] = useState(false);
 
   useEffect(() => {
     if (!apiKey || apiKey === 'YOUR_ACCESS_TOKEN_HERE') {
@@ -35,6 +40,9 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
 
         map.on('load', () => {
           console.log('Mapbox map loaded successfully');
+          
+          const clustersData = createClusters(locationsData, 0.3);
+          setClusters(clustersData);
           
           if (showHeatmap) {
             const geojsonData = {
@@ -108,10 +116,41 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
                 ]
               }
             });
-
-
           }
 
+          clustersData.forEach((cluster) => {
+            const el = document.createElement('div');
+            el.className = 'cluster-marker';
+            el.style.width = `${getClusterSize(cluster.count)}px`;
+            el.style.height = `${getClusterSize(cluster.count)}px`;
+            el.style.borderRadius = '50%';
+            el.style.border = `1px solid ${getClusterColor(cluster.count)}`;
+            el.style.backgroundColor = 'white';
+            el.style.cursor = 'pointer';
+            el.style.display = 'flex';
+            el.style.alignItems = 'center';
+            el.style.justifyContent = 'center';
+            el.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+            el.style.overflow = 'hidden';
+
+            const img = document.createElement('img');
+            img.src = cluster.representativeImage;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '50%';
+            el.appendChild(img);
+
+
+            el.addEventListener('click', () => {
+              setSelectedCluster(cluster);
+              setShowClusterModal(true);
+            });
+
+            new mapboxgl.Marker(el)
+              .setLngLat([cluster.center.lng, cluster.center.lat])
+              .addTo(map);
+          });
           
           setIsLoading(false);
         });
@@ -156,7 +195,12 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
       )}
       <div 
         ref={mapRef} 
-        className="w-full h-full"
+        className="w-full h-full rounded-3xl"
+      />
+      <ClusterModal 
+        isOpen={showClusterModal}
+        onClose={() => setShowClusterModal(false)}
+        cluster={selectedCluster}
       />
     </div>
   );
