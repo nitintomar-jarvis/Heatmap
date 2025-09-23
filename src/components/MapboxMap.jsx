@@ -16,13 +16,10 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
 
   useEffect(() => {
     if (!apiKey || apiKey === 'YOUR_ACCESS_TOKEN_HERE') {
-      console.warn('Mapbox access token is required');
       setError('Mapbox access token is required');
       setIsLoading(false);
       return;
     }
-
-    console.log('Loading Mapbox with access token:', apiKey.substring(0, 10) + '...');
 
     mapboxgl.accessToken = apiKey;
 
@@ -39,7 +36,6 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
         mapInstance.current = map;
 
         map.on('load', () => {
-          console.log('Mapbox map loaded successfully');
           
           const clustersData = createClusters(locationsData, 0.3);
           setClusters(clustersData);
@@ -155,14 +151,12 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
           setIsLoading(false);
         });
 
-        map.on('error', (e) => {
-          console.error('Mapbox error:', e);
+        map.on('error', () => {
           setError('Failed to load map');
           setIsLoading(false);
         });
 
       } catch (error) {
-        console.error('Error initializing Mapbox:', error);
         setError(error.message);
         setIsLoading(false);
       }

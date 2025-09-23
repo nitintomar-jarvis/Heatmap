@@ -8,11 +8,9 @@ const GoogleMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
 
   useEffect(() => {
     if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
-      console.warn('Google Maps API key is required');
       return;
     }
 
-    console.log('Loading Google Maps with API key:', apiKey.substring(0, 10) + '...');
 
     const loader = new Loader({
       apiKey: 'AIzaSyAqlLNagX_XNQGJQMBsGJ9g2B9TB2QnItM',
@@ -21,7 +19,6 @@ const GoogleMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
     });
 
     loader.load().then((google) => {
-      console.log('Google Maps loaded successfully');
       if (mapRef.current) {
         const map = new google.maps.Map(mapRef.current, {
           center: center,
@@ -42,12 +39,9 @@ const GoogleMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
           title: 'Selected Location'
         });
         
-        console.log('Map initialized successfully');
         setIsLoading(false);
       }
     }).catch((error) => {
-      console.error('Error loading Google Maps:', error);
-      console.error('Full error details:', error);
       setError(error.message);
       setIsLoading(false);
     });

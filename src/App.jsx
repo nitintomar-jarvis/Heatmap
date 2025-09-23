@@ -4,8 +4,6 @@ import { locationsData } from './data/locations';
 function App() {
   const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'YOUR_ACCESS_TOKEN_HERE';
   
-  console.log('Mapbox Access Token loaded:', MAPBOX_ACCESS_TOKEN ? 'Yes' : 'No');
-  console.log('Access Token value:', MAPBOX_ACCESS_TOKEN);
 
   return (
     <div className="h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-orange-50 flex items-center justify-center p-2">
