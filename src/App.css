@@ -5,6 +5,45 @@
   padding: 0;
 }
 
+.custom-tooltip .mapboxgl-popup-content {
+  background: white !important;
+  color: #1f2937 !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  font-size: 13px !important;
+  max-width: 280px !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  animation: tooltipFadeIn 0.2s ease-out !important;
+}
+
+.custom-tooltip .mapboxgl-popup-tip {
+  border-top-color: white !important;
+  border-width: 8px !important;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cluster-marker {
+  transition: all 0.3s ease !important;
+}
+
+.cluster-marker:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.3) !important;
+  z-index: 1000 !important;
+}
+
+
 .logo {
   height: 6em;
   padding: 1.5em;

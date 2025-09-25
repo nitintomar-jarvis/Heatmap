@@ -22,15 +22,15 @@ function App() {
               </p>
               <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-yellow-100 to-pink-100 rounded-full border border-yellow-200">
                 <span className="text-yellow-700 font-semibold text-sm">
-                  📍 {locationsData.length} data points across the Bay Area
+                  📍 {locationsData.length} data points across India
                 </span>
               </div>
             </div>
             
             <div className="flex-1">
               <MapboxMap 
-                center={{ lat: 37.7749, lng: -122.4194 }}
-                zoom={10}
+                center={{ lat: 20.5937, lng: 78.9629 }}
+                zoom={5}
                 apiKey={MAPBOX_ACCESS_TOKEN}
                 showHeatmap={true}
               />
