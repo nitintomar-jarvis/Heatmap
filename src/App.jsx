@@ -1,5 +1,5 @@
 import MapboxMap from './components/MapboxMap';
-import { locationsData } from './data/locations';
+import { locationsData } from './data/locations3';
 
 function App() {
   const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'YOUR_ACCESS_TOKEN_HERE';

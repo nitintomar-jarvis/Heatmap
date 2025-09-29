@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { locationsData } from '../data/locations';
-import { createClusters, getClusterSize, getClusterColor } from '../utils/clusterUtils';
+import { locationsData } from '../data/locations3';
+import {  getClusterSize, getClusterColor } from '../utils/clusterUtils';
 import ClusterModal from './ClusterModal';
 
 const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKey, showHeatmap = true }) => {
@@ -10,7 +10,6 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
   const mapInstance = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [, setClusters] = useState([]);
   const [selectedCluster, setSelectedCluster] = useState(null);
   const [showClusterModal, setShowClusterModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,6 +20,24 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
   const [clusterMarkers, setClusterMarkers] = useState([]);
   const [showBlipsLoading, setShowBlipsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+
+  const markersByIdRef = useRef(new Map());
+const geojsonData = useMemo(() => ({
+  type: 'FeatureCollection',
+  features: locationsData.map(loc => ({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [loc.lng, loc.lat] },
+    properties: {
+      name: loc.name || '',
+      state: loc.state || '',
+      ac: loc.ac || '',
+      booth_number: loc.booth_number || '',
+      photo: loc.photo || '',
+      weight: 1
+    }
+  }))
+}), []);
+
 
   useEffect(() => {
     if (!apiKey || apiKey === 'YOUR_ACCESS_TOKEN_HERE') {
@@ -44,31 +61,20 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
         mapInstance.current = map;
 
         map.on('load', () => {
-          
-          const clustersData = createClusters(locationsData, 0.3);
-          setClusters(clustersData);
-          
+          map.addSource('points', {
+            type: 'geojson',
+            data: geojsonData,
+            cluster: true,
+            clusterRadius: 90.5,
+            clusterMaxZoom: 14
+          });
+        
           if (showHeatmap) {
-            const geojsonData = {
-              type: 'FeatureCollection',
-              features: locationsData.map(location => ({
-                type: 'Feature',
-                geometry: {
-                  type: 'Point',
-                  coordinates: [location.lng, location.lat]
-                },
-                properties: {
-                  name: location.name,
-                  weight: 1
-                }
-              }))
-            };
-
             map.addSource('heatmap', {
               type: 'geojson',
               data: geojsonData
             });
-
+        
             map.addLayer({
               id: 'heatmap',
               type: 'heatmap',
@@ -121,120 +127,162 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
               }
             });
           }
-
+        
+          map.addLayer({
+            id: 'clusters',
+            type: 'circle',
+            source: 'points',
+            filter: ['has', 'point_count'],
+            paint: {
+              'circle-radius': 1,
+              'circle-opacity': 0
+            }
+          });
+        
           setIsLoading(false);
           setShowBlipsLoading(true);
-          
-          const preloadImages = (clusters) => {
-            let loadedCount = 0;
-            const totalCount = clusters.length;
-            
-            const imagePromises = clusters.map(cluster => {
-              return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                  loadedCount++;
-                  setLoadingProgress(Math.round((loadedCount / totalCount) * 100));
-                  resolve(cluster);
-                };
-                img.onerror = () => {
-                  loadedCount++;
-                  setLoadingProgress(Math.round((loadedCount / totalCount) * 100));
-                  resolve(cluster);
-                };
-                img.src = cluster.representativeImage;
-              });
-            });
-            
-            return Promise.all(imagePromises);
-          };
-          
-          preloadImages(clustersData).then(() => {
-            const markers = [];
-            clustersData.forEach((cluster) => {
-              const el = document.createElement('div');
-              el.className = 'cluster-marker';
-              el.style.width = `${getClusterSize(cluster.count)}px`;
-              el.style.height = `${getClusterSize(cluster.count)}px`;
-              el.style.borderRadius = '50%';
-              el.style.border = `1px solid ${getClusterColor(cluster.count)}`;
-              el.style.backgroundColor = 'white';
-              el.style.cursor = 'pointer';
-              el.style.display = 'flex';
-              el.style.alignItems = 'center';
-              el.style.justifyContent = 'center';
-              el.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-              el.style.overflow = 'hidden';
-
-              const img = document.createElement('img');
-              img.src = cluster.representativeImage;
-              img.style.width = '100%';
-              img.style.height = '100%';
-              img.style.objectFit = 'cover';
-              img.style.borderRadius = '50%';
-              el.appendChild(img);
-
-              const representativeLocation = cluster.locations[0];
-              
-              const popup = new mapboxgl.Popup({
-                closeButton: false,
-                closeOnClick: false,
-                closeOnMove: false,
-                className: 'custom-tooltip'
-              }).setHTML(`
-                <div style="display: flex; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.1);">
-                  <div style="width: 8px; height: 8px; background: linear-gradient(45deg, #3b82f6, #8b5cf6); border-radius: 50%; margin-right: 8px;"></div>
-                  <div style="font-weight: 700; color: #1f2937; font-size: 14px;">${representativeLocation.name}</div>
-                </div>
-                <div style="color: #374151; font-size: 12px; line-height: 1.6;">
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 6px; padding: 4px 0;">
-                    <span style="color: #6b7280; font-weight: 500;">State:</span>
-                    <span style="color: #1f2937; font-weight: 600;">${representativeLocation.state}</span>
+          setLoadingProgress(0);
+        
+          const syncClusterMarkers = () => {
+            if (!mapInstance.current) return;
+            const map = mapInstance.current;
+            const src = map.getSource('points');
+            if (!src) return;
+        
+            const features = map.queryRenderedFeatures({ layers: ['clusters'] });
+            const wantedIds = new Set(features.map(f => f.properties.cluster_id));
+        
+            for (const [id, marker] of markersByIdRef.current.entries()) {
+              if (!wantedIds.has(id)) {
+                marker.remove();
+                markersByIdRef.current.delete(id);
+              }
+            }
+        
+            if (features.length === 0) {
+              setClusterMarkers([]);
+              setShowBlipsLoading(false);
+              setLoadingProgress(100);
+              return;
+            }
+        
+            let created = 0;
+            const total = features.length;
+        
+            features.forEach((f) => {
+              const id = f.properties.cluster_id;
+              if (markersByIdRef.current.has(id)) return;
+        
+              const coords = f.geometry.coordinates.slice();
+              const count = f.properties.point_count;
+        
+              src.getClusterLeaves(id, 1, 0, (err, leaves) => {
+                const rep = leaves && leaves[0];
+                const props = rep ? rep.properties : {};
+        
+                const el = document.createElement('div');
+                el.className = 'cluster-marker';
+                el.style.width = `${getClusterSize(count)}px`;
+                el.style.height = `${getClusterSize(count)}px`;
+                el.style.borderRadius = '50%';
+                el.style.border = `1px solid ${getClusterColor(count)}`;
+                el.style.backgroundColor = 'white';
+                el.style.cursor = 'pointer';
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = 'center';
+                el.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                el.style.overflow = 'hidden';
+        
+                const img = document.createElement('img');
+                img.src = props.photo || '';
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover';
+                img.style.borderRadius = '50%';
+                el.appendChild(img);
+        
+                const popup = new mapboxgl.Popup({
+                  closeButton: false,
+                  closeOnClick: false,
+                  closeOnMove: false,
+                  className: 'custom-tooltip'
+                }).setHTML(`
+                  <div style="display: flex; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.1);">
+                    <div style="width: 8px; height: 8px; background: linear-gradient(45deg, #3b82f6, #8b5cf6); border-radius: 50%; margin-right: 8px;"></div>
+                    <div style="font-weight: 700; color: #1f2937; font-size: 14px;">${props.name || ''}</div>
                   </div>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 6px; padding: 4px 0;">
-                    <span style="color: #6b7280; font-weight: 500;">AC:</span>
-                    <span style="color: #1f2937; font-weight: 600;">${representativeLocation.ac}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 4px 0;">
-                    <span style="color: #6b7280; font-weight: 500;">Booth:</span>
-                    <span style="color: #1f2937; font-weight: 600;">${representativeLocation.booth_number}</span>
-                  </div>
-                  <div style="background: rgba(0,0,0,0.05); padding: 8px; border-radius: 6px; margin-top: 8px;">
-                    <div style="color: #6b7280; font-size: 11px; margin-bottom: 4px; font-weight: 500;">Booth Name:</div>
-                    <div style="color: #1f2937; font-size: 11px; line-height: 1.4; word-wrap: break-word;">
-                      ${representativeLocation["Booth Name"]}
+                  <div style="color: #374151; font-size: 12px; line-height: 1.6;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; padding: 4px 0;">
+                      <span style="color: #6b7280; font-weight: 500;">State:</span>
+                      <span style="color: #1f2937; font-weight: 600;">${props.state || ''}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; padding: 4px 0;">
+                      <span style="color: #6b7280; font-weight: 500;">AC:</span>
+                      <span style="color: #1f2937; font-weight: 600;">${props.ac || ''}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 4px 0;">
+                      <span style="color: #6b7280; font-weight: 500;">Booth:</span>
+                      <span style="color: #1f2937; font-weight: 600;">${props.booth_number || ''}</span>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.05); padding: 8px; border-radius: 6px; margin-top: 8px;">
+                      <div style="color: #6b7280; font-size: 11px; margin-bottom: 4px; font-weight: 500;">Booth Name:</div>
+                      <div style="color: #1f2937; font-size: 11px; line-height: 1.4; word-wrap: break-word;">
+                        ${props['Booth Name'] || ''}
+                      </div>
                     </div>
                   </div>
-                </div>
-              `);
-
-              el.addEventListener('mouseenter', () => {
-                console.log('Hovering over marker');
-                popup.setLngLat([cluster.center.lng, cluster.center.lat]).addTo(map);
+                `);
+        
+                el.addEventListener('mouseenter', () => {
+                  popup.setLngLat(coords).addTo(map);
+                });
+        
+                el.addEventListener('mouseleave', () => {
+                  popup.remove();
+                });
+        
+                el.addEventListener('click', () => {
+                  const limit = Math.min(count, 100);
+                  src.getClusterLeaves(id, limit, 0, (e2, allLeaves) => {
+                    const representativeImage = props.photo || '';
+                    const locations = (allLeaves || []).map(l => ({
+                      name: l.properties.name || '',
+                      state: l.properties.state || '',
+                      ac: l.properties.ac || '',
+                      booth_number: l.properties.booth_number || '',
+                      photo: l.properties.photo || '',
+                      lat: l.geometry.coordinates[1],
+                      lng: l.geometry.coordinates[0]
+                    }));
+                    setSelectedCluster({
+                      center: { lng: coords[0], lat: coords[1] },
+                      count,
+                      representativeImage,
+                      locations
+                    });
+                    setShowClusterModal(true);
+                  });
+                });
+        
+                const marker = new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
+                markersByIdRef.current.set(id, marker);
+        
+                created += 1;
+                setLoadingProgress(Math.round((created / total) * 100));
+                setClusterMarkers(Array.from(markersByIdRef.current.values()));
+                if (created === total) {
+                  setShowBlipsLoading(false);
+                }
               });
-
-              el.addEventListener('mouseleave', () => {
-                console.log('Leaving marker');
-                popup.remove();
-              });
-
-              el.addEventListener('click', () => {
-                setSelectedCluster(cluster);
-                setShowClusterModal(true);
-              });
-
-              const marker = new mapboxgl.Marker(el)
-                .setLngLat([cluster.center.lng, cluster.center.lat])
-                .addTo(map);
-              
-              markers.push(marker);
-              
             });
-            
-            setClusterMarkers(markers);
-            setShowBlipsLoading(false);
-          });
+          };
+        
+          map.on('moveend', syncClusterMarkers);
+          map.on('zoomend', syncClusterMarkers);
+          syncClusterMarkers();
         });
+        
 
         map.on('error', () => {
           setError('Failed to load map');
@@ -253,20 +301,17 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
         mapInstance.current = null;
       }
     };
-  }, [center, zoom, apiKey, showHeatmap]);
+  }, [center, zoom, apiKey, showHeatmap, geojsonData]);
 
   useEffect(() => {
-    if (clusterMarkers.length > 0) {
-      clusterMarkers.forEach(marker => {
-        if (showImageBlips) {
-          marker.getElement().style.display = 'flex';
-        } else {
-          marker.getElement().style.display = 'none';
-        }
+    const markers = clusterMarkers;
+    if (markers && markers.length > 0) {
+      markers.forEach(marker => {
+        marker.getElement().style.display = showImageBlips ? 'flex' : 'none';
       });
     }
   }, [showImageBlips, clusterMarkers]);
-
+  
   const toggleImageBlips = () => {
     setShowImageBlips(!showImageBlips);
   };
