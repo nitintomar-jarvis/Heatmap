@@ -9,7 +9,7 @@ function App() {
   useEffect(() => {
     const loadDataCount = async () => {
       try {
-        const response = await fetch('https://storage.googleapis.com/heatmap-man-ki-baat/geojson4.json');
+        const response = await fetch('/api/geojson');
         if (response.ok) {
           const data = await response.json();
           setDataCount(data.features?.length || 0);
@@ -34,11 +34,9 @@ function App() {
                 <span className="text-white text-xl">🔥</span>
               </div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                Interactive Heatmap Visualization
+                Man Ki Baat Visualization
               </h1>
-              <p className="text-gray-700 text-sm mb-2">
-                Explore location density with our Snapchat-inspired heatmap overlay
-              </p>
+              
               <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-yellow-100 to-pink-100 rounded-full border border-yellow-200">
                 <span className="text-yellow-700 font-semibold text-sm">
                   📍 {dataLoading ? 'Loading...' : `${dataCount.toLocaleString()} data points across India`}

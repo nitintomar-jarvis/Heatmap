@@ -28,7 +28,7 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
     const loadGeoJSONData = async () => {
       try {
         setDataLoading(true);
-        const response = await fetch('https://storage.googleapis.com/heatmap-man-ki-baat/geojson4.json');
+        const response = await fetch('/api/geojson');
         if (!response.ok) {
           throw new Error('Failed to load GeoJSON data');
         }
