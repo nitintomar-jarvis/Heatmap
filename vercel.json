@@ -1,7 +1,1 @@
-{
-  "functions": {
-    "api/geojson.js": {
-      "runtime": "nodejs18.x"
-    }
-  }
-}
+{}
