@@ -9,7 +9,7 @@ function App() {
   useEffect(() => {
     const loadDataCount = async () => {
       try {
-        const response = await fetch('/api/geojson');
+        const response = await fetch('https://storage.googleapis.com/heatmap-man-ki-baat/geojson4.json');
         if (response.ok) {
           const data = await response.json();
           setDataCount(data.features?.length || 0);
