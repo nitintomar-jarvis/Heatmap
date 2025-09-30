@@ -1,9 +1,28 @@
 import MapboxMap from './components/MapboxMap';
-import { locationsData } from './data/locations3';
+import { useState, useEffect } from 'react';
 
 function App() {
   const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'YOUR_ACCESS_TOKEN_HERE';
-  
+  const [dataCount, setDataCount] = useState(0);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  useEffect(() => {
+    const loadDataCount = async () => {
+      try {
+        const response = await fetch('/api/geojson');
+        if (response.ok) {
+          const data = await response.json();
+          setDataCount(data.features?.length || 0);
+        }
+      } catch (error) {
+        console.error('Error loading data count:', error);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    loadDataCount();
+  }, []);
 
   return (
     <div className="h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-orange-50 flex items-center justify-center p-2">
@@ -22,7 +41,7 @@ function App() {
               </p>
               <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-yellow-100 to-pink-100 rounded-full border border-yellow-200">
                 <span className="text-yellow-700 font-semibold text-sm">
-                  📍 {locationsData.length} data points across India
+                  📍 {dataLoading ? 'Loading...' : `${dataCount.toLocaleString()} data points across India`}
                 </span>
               </div>
             </div>

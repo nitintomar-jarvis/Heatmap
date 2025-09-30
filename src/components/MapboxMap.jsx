@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { locationsData } from '../data/locations3';
-import {  getClusterSize, getClusterColor } from '../utils/clusterUtils';
+import { getClusterSize, getClusterColor } from '../utils/clusterUtils';
 import ClusterModal from './ClusterModal';
 
 const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKey, showHeatmap = true }) => {
@@ -20,29 +19,40 @@ const MapboxMap = ({ center = { lat: 37.7749, lng: -122.4194 }, zoom = 10, apiKe
   const [clusterMarkers, setClusterMarkers] = useState([]);
   const [showBlipsLoading, setShowBlipsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [geojsonData, setGeojsonData] = useState(null);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const markersByIdRef = useRef(new Map());
-const geojsonData = useMemo(() => ({
-  type: 'FeatureCollection',
-  features: locationsData.map(loc => ({
-    type: 'Feature',
-    geometry: { type: 'Point', coordinates: [loc.lng, loc.lat] },
-    properties: {
-      name: loc.name || '',
-      state: loc.state || '',
-      ac: loc.ac || '',
-      booth_number: loc.booth_number || '',
-      photo: loc.photo || '',
-      weight: 1
-    }
-  }))
-}), []);
 
+  useEffect(() => {
+    const loadGeoJSONData = async () => {
+      try {
+        setDataLoading(true);
+        const response = await fetch('/api/geojson');
+        if (!response.ok) {
+          throw new Error('Failed to load GeoJSON data');
+        }
+        const data = await response.json();
+        setGeojsonData(data);
+        setDataLoading(false);
+      } catch (error) {
+        console.error('Error loading GeoJSON data:', error);
+        setError('Failed to load location data');
+        setDataLoading(false);
+      }
+    };
+
+    loadGeoJSONData();
+  }, []);
 
   useEffect(() => {
     if (!apiKey || apiKey === 'YOUR_ACCESS_TOKEN_HERE') {
       setError('Mapbox access token is required');
       setIsLoading(false);
+      return;
+    }
+
+    if (!geojsonData || dataLoading) {
       return;
     }
 
@@ -65,7 +75,7 @@ const geojsonData = useMemo(() => ({
             type: 'geojson',
             data: geojsonData,
             cluster: true,
-            clusterRadius: 90.5,
+            clusterRadius: 50.5,
             clusterMaxZoom: 14
           });
         
@@ -301,7 +311,7 @@ const geojsonData = useMemo(() => ({
         mapInstance.current = null;
       }
     };
-  }, [center, zoom, apiKey, showHeatmap, geojsonData]);
+  }, [center, zoom, apiKey, showHeatmap, geojsonData, dataLoading]);
 
   useEffect(() => {
     const markers = clusterMarkers;
@@ -536,11 +546,11 @@ const geojsonData = useMemo(() => ({
         </button>
       </div>
 
-      {isLoading && (
+      {(isLoading || dataLoading) && (
         <div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-10">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-            <p className="text-gray-600">Loading map...</p>
+            <p className="text-gray-600">{dataLoading ? 'Loading location data...' : 'Loading map...'}</p>
           </div>
         </div>
       )}

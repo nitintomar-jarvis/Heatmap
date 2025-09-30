@@ -1,12 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createReadStream } from 'fs';
+import { createInterface } from 'readline';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const csvPath = path.join(__dirname, 'src/data/MNKB_125th_Lat_Long_sample_2k_new.xlsx - Sheet1.csv');
-const outputPath = path.join(__dirname, 'src/data/locations.js');
+const csvPath = path.join(__dirname, 'src/data/mann_ki_baat_2025-09-28 (8) (1).csv');
+const outputPath = path.join(__dirname, 'src/data/locations4.js');
 
 function parseCSVLine(line) {
   const result = [];
@@ -30,21 +32,37 @@ function parseCSVLine(line) {
   return result;
 }
 
-function convertCSVToLocations() {
+async function convertCSVToLocations() {
   try {
-    const csvContent = fs.readFileSync(csvPath, 'utf8');
-    const lines = csvContent.split('\n');
-    
-    const headers = parseCSVLine(lines[0]);
-    console.log('Headers:', headers);
-    
+    const fileStream = createReadStream(csvPath, { encoding: 'utf8' });
+    const rl = createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    });
+
+    let headers = null;
     const locations = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
+    let lineCount = 0;
+
+    console.log('Starting to process CSV file...');
+
+    for await (const line of rl) {
+      lineCount++;
       
-      const values = parseCSVLine(line);
+      if (lineCount % 10000 === 0) {
+        console.log(`Processed ${lineCount} lines, found ${locations.length} valid locations`);
+      }
+
+      if (lineCount === 1) {
+        headers = parseCSVLine(line);
+        console.log('Headers:', headers);
+        continue;
+      }
+
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+      
+      const values = parseCSVLine(trimmedLine);
       
       if (values.length >= headers.length) {
         const location = {};
@@ -70,7 +88,9 @@ function convertCSVToLocations() {
         }
       }
     }
-    
+
+    console.log(`Finished processing ${lineCount} lines, found ${locations.length} valid locations`);
+
     const jsContent = `export const locationsData = [
 ${locations.map(loc => {
   const props = Object.entries(loc).map(([key, value]) => {
